@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lab Assignment 3</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: beige;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Singapore Population Choropleth</h1>
+    <svg></svg>
+    <div class="tooltip"></div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.13.0/d3-legend.js"></script>
+
+    <script>
+
+        let width = 1000, height = 600;
+
+        let svg = d3.select("svg")
+            .attr("viewBox", "0 0 " + width + " " + height);
+
+        // Load external data
+        Promise.all([d3.json("https://chi-loong.github.io/CSC3007/assignments/sgmap.json"), d3.csv("https://chi-loong.github.io/CSC3007/assignments/population2021.csv")]).then(data => {
+
+            console.log(data[0]);
+            console.log(data[1]);
+
+            // get population
+            let population2021 = []
+            for (let i = 0; i < data[1].length; i++) {
+                population2021[data[1][i].Subzone.toUpperCase()] = data[1][i].Population;
+            }
+
+            //legend values and labels
+            let legend_val = [100, 500, 1000, 2500, 5000, 7500, 10000, 50000,100000]
+            let lengend_lab = ['<100', '100-500', '501-1000', '1001-5000', '5001-10000', '100001-50000', '50001-100000', '>100000']
+            //color scale
+            var cs = d3.scaleThreshold()
+                        .domain(legend_val)
+                        .range(d3.schemeBlues[8]);
+
+            // Map and projection
+            var projection = d3.geoMercator()
+                .center([103.851959, 1.290270])
+                .fitExtent([[20, 20], [980, 580]], data[0]);
+
+            let geopath = d3.geoPath().projection(projection);
+
+            // Draw the map
+            svg.append("g")
+                .attr("id", "districts")
+                .selectAll("path")
+                .data(data[0].features)
+                .enter()
+                .append("path")
+                .attr("d", geopath)
+                //.attr("fill", "lightblue")
+                .attr("fill", function(d) {
+                    return cs(population2021[d.properties.Name])
+                })
+                .attr("stroke", "black")
+                .attr("stoke-width", 1)
+
+                //tooltip
+                .on("mouseover", (event, d) => {
+                    d3.select(".tooltip")
+                        .html(d.properties.Name + "<br>" + "Population size: " + (population2021[d.properties.Name]))
+                        .style("position", "absolute")
+                        .style("background", "#fff")
+                        .style("left", (event.pageX) + "px")
+                        .style("top", (event.pageY) + "px");
+
+                    d3.select(event.currentTarget)
+                        .style("stroke", "red")
+                        .style("stroke-width", 0.5)
+                })
+
+                .on("mouseout", (event, d) => {
+                    d3.select(".tooltip")
+                        .text("");
+
+                    d3.select(event.currentTarget)
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                })
+
+                // legend
+                var legend = d3.legendColor()
+                                .labels(lengend_lab)
+                                .scale(cs)
+                                .title("Population Size");
+
+                // legend to svg
+                svg.append("g")
+                    .attr("transform", "translate(40, 20)")
+                    .style("font-size", "10px")
+                    .call(legend)
+        })
+
+    </script>
+
+</body>
+
+</html>
